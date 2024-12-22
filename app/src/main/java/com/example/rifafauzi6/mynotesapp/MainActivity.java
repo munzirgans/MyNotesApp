@@ -12,6 +12,9 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.os.Build;
 import android.os.Bundle;
+
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import android.view.Menu;
@@ -40,6 +43,9 @@ public class MainActivity extends AppCompatActivity
     private NoteHelper noteHelper;
 
     private static final double BUDGET_LIMIT = 1000000;
+    private static final String CHANNEL_ID = "mynotesapp";
+    private static final String CHANNEL_NAME = "MyNotesApp";
+    private static final String CHANNEL_DESC = "My Notes App Notifications";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -66,6 +72,14 @@ public class MainActivity extends AppCompatActivity
         rvNotes.setAdapter(adapter);
 
         new LoadNoteAsync().execute();
+
+
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
+            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_DEFAULT);
+            channel.setDescription(CHANNEL_DESC);
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            manager.createNotificationChannel(channel);
+        }
 
     }
 
@@ -112,7 +126,7 @@ public class MainActivity extends AppCompatActivity
             tvTotalAngka.setText("Rp. " + String.format("%,.2f", totalPrice));
 
             if (totalPrice > BUDGET_LIMIT) {
-                showBudgetExceededNotification(totalPrice);
+                displayNotification();
             }
 
             if (list.size() == 0){
@@ -160,6 +174,10 @@ public class MainActivity extends AppCompatActivity
         double totalPrice = noteHelper.getTotalPrice();
         TextView tvTotalAngka = findViewById(R.id.tv_total_angka);
         tvTotalAngka.setText("Rp. " + String.format("%,.0f", totalPrice));
+
+        if(totalPrice > BUDGET_LIMIT){
+            displayNotification();
+        }
     }
 
     @Override
@@ -200,43 +218,13 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-    private void showBudgetExceededNotification(double totalPrice) {
-        String message = "Pengeluaran Anda telah melebihi Rp. " + String.format("%,.2f", totalPrice);
+    private void displayNotification() {
+        NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(this, CHANNEL_ID).setContentTitle("MyNotesApp Notifications")
+                .setSmallIcon(R.drawable.ic_login)
+                .setContentText("Pengeluaran anda sudah melebihi batas Rp. 1,000,000!")
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT);
 
-        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-
-        // Mengecek apakah perangkat menggunakan Android Oreo atau lebih baru (API 26+)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            // Membuat channel hanya pada Android Oreo (API 26) dan lebih tinggi
-            CharSequence name = "Budget Limit Channel";
-            String description = "Channel for budget limit notification";
-            int importance = NotificationManager.IMPORTANCE_DEFAULT;
-            NotificationChannel channel = new NotificationChannel("budget_limit_channel", name, importance);
-            channel.setDescription(description);
-            if (notificationManager != null) {
-                notificationManager.createNotificationChannel(channel);
-            }
-
-            Notification notification = new Notification.Builder(this, "budget_limit_channel")
-                    .setContentTitle("Pemberitahuan Pengeluaran")
-                    .setContentText(message)
-                    .setAutoCancel(true) // Otomatis menghapus setelah di-tap
-                    .build();
-
-            if (notificationManager != null) {
-                notificationManager.notify(1, notification); // ID = 1
-            }
-        } else {
-            // Untuk perangkat dengan API level di bawah 26 (Android Nougat dan sebelumnya)
-            Notification notification = new Notification.Builder(this)
-                    .setContentTitle("Pemberitahuan Pengeluaran")
-                    .setContentText(message)
-                    .setAutoCancel(true) // Otomatis menghapus setelah di-tap
-                    .build();
-
-            if (notificationManager != null) {
-                notificationManager.notify(1, notification); // ID = 1
-            }
-        }
+        NotificationManagerCompat mNotifMgr = NotificationManagerCompat.from(this);
+        mNotifMgr.notify(1, mBuilder.build());
     }
 }
